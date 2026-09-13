@@ -1,0 +1,18 @@
+# Core data science
+pandas==3.0.5
+numpy==2.5.3
+scikit-learn==1.9.1
+joblib==1.6.0
+
+# Visualisation
+matplotlib==3.11.2
+seaborn==0.13.2
+
+# Notebook
+jupyter==1.1.1
+notebook==7.6.2
+
+# API
+fastapi==0.141.1
+uvicorn[standard]==0.52.4
+pydantic==2.13.5
