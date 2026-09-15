@@ -20,7 +20,7 @@ them before they go.
 |---|---|
 | 1. Data understanding & preparation | ✅ Complete |
 | 2. Exploratory data analysis | ✅ Complete |
-| 3. Feature engineering | Not started |
+| 3. Feature engineering | ✅ Complete |
 | 4. Model development | Not started |
 | 5. Model evaluation | Not started |
 | 6. Model interpretation | Not started |
@@ -39,6 +39,7 @@ customer_churn_project/
 │   └── churn_analysis.ipynb                     full analysis and modelling
 ├── model/
 │   └── churn_model.pkl                          saved pipeline (created by section 7)
+├── churn_features.py                            engineered features, shared by notebook and API
 ├── app.py                                       FastAPI prediction service
 ├── sample_request.json                          example API payload
 ├── requirements.txt
@@ -155,6 +156,25 @@ raising, and carries a constant-`0.0` imputer so a never-billed customer is repa
 the pickled artifact rather than by a notebook cell. Section 1.13 demonstrates all of this
 on a single-row payload, including a `joblib` round-trip, so the API path is proven before
 `app.py` exists.
+
+**Engineered features live in a module, not the notebook.** `churn_features.py` holds the
+four features section 3 builds, and both the notebook and `app.py` import it. This is
+not tidiness: `joblib` pickles a function by reference, storing its module and name
+rather than its body, so a feature function defined in the notebook would be recorded as
+`__main__.add_features` and `joblib.load` inside the API would fail to resolve it. With a
+real module the reference is `churn_features.add_features`, the saved pipeline carries
+feature engineering as its first step, and `POST /predict` can accept the raw customer
+fields. The alternative — re-implementing the rules in `app.py` — would put the same logic
+in two places, where the first edit to either makes the API score customers differently
+from the notebook that validated it.
+
+**Feature engineering was measured, not assumed.** Section 3 reports a cross-validated
+ablation showing that three of the four engineered features change decision-tree recall by
+exactly nothing, because a tree is invariant to monotone transformations and builds
+conjunctions itself given depth. The exception is `is_high_risk` at `max_depth=2`, worth
++3.4 points of recall where the tree cannot afford to rebuild a four-way conjunction. The
+change that actually helps is a removal: dropping `gender`, `PhoneService` and
+`MultipleLines` improves recall, precision and F1 together.
 
 **Class imbalance and the two benchmarks.** At 26.54% churn, a model predicting "No" for
 every customer scores 73.46% accuracy while finding none of the churners. All results are
