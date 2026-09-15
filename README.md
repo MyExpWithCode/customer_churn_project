@@ -18,7 +18,7 @@ them before they go.
 
 | Section | Status |
 |---|---|
-| 1. Data understanding & preparation | Scaffolded — in progress |
+| 1. Data understanding & preparation | ✅ Complete |
 | 2. Exploratory data analysis | Not started |
 | 3. Feature engineering | Not started |
 | 4. Model development | Not started |
@@ -79,9 +79,10 @@ pip install -r requirements.txt
 jupyter lab notebook/churn_analysis.ipynb
 ```
 
-Run the cells top to bottom. The notebook covers data preparation, EDA, feature
-engineering, model development, evaluation, and interpretation, and writes the trained
-pipeline to `model/churn_model.pkl`.
+Run the cells top to bottom. The notebook is being built one section at a time — see
+**Build status** above for what is currently in it. When complete it will cover data
+preparation, EDA, feature engineering, model development, evaluation and interpretation,
+and will write the trained pipeline to `model/churn_model.pkl`.
 
 Note that the notebook reads the dataset via the relative path `../data/`, so it must be
 run from within the `notebook/` directory (which is the default when opened as above).
@@ -131,11 +132,20 @@ fields, and wrong types are all rejected before reaching the model.
 
 ## Notes on methodology
 
-**Data leakage.** The train/test split happens before any encoding or scaling. All
-preprocessing lives inside a scikit-learn `Pipeline`, which is fitted on the training set
-only and then applied unchanged to the test set. This also makes the preprocessing
-reproducible for new customer data — the API loads the same fitted pipeline object, so a
-request is transformed identically to a training row.
+**Data leakage.** The train/test split happens before anything is fitted. Section 1
+separates the encoding *recipe* from the *fit*: a `build_preprocessor()` factory defines an
+unfitted `ColumnTransformer` (so that cell learns nothing and cannot leak), and the single
+`.fit` call in the section sits below the split and takes `X_train` alone. The test set is
+touched only by `transform` and by shape reporting. Section 4 calls the same factory for a
+fresh transformer inside a `Pipeline`, because `Pipeline` fits its steps in place rather
+than cloning them.
+
+**Reuse on unseen data.** The preprocessor selects columns by name, uses
+`handle_unknown="ignore"` so an unseen category degrades to an all-zero block instead of
+raising, and carries a constant-`0.0` imputer so a never-billed customer is repaired inside
+the pickled artifact rather than by a notebook cell. Section 1.13 demonstrates all of this
+on a single-row payload, including a `joblib` round-trip, so the API path is proven before
+`app.py` exists.
 
 **Class imbalance.** At 26.54% churn, a model predicting "No" for every customer scores
 73.46% accuracy while being useless. All results are therefore judged against that
