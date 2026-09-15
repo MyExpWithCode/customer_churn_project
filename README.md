@@ -11,6 +11,9 @@ them before they go.
 - **Target:** `Churn` (Yes / No), 26.54% positive class
 - **Model:** Decision Tree Classifier (`entropy`, `min_samples_leaf=50`, `class_weight="balanced"`)
 - **Split:** 70:30, `random_state=42`, stratified on the target
+- **Held-out test performance:** recall **0.781**, precision **0.505**, F1 **0.613**,
+  ROC-AUC **0.820**, accuracy **0.739** — finds 438 of 561 churners, protecting
+  **80.1% of at-risk monthly revenue**
 
 ---
 
@@ -22,7 +25,7 @@ them before they go.
 | 2. Exploratory data analysis | ✅ Complete |
 | 3. Feature engineering | ✅ Complete |
 | 4. Model development | ✅ Complete |
-| 5. Model evaluation | Not started |
+| 5. Model evaluation | ✅ Complete |
 | 6. Model interpretation | Not started |
 | 7. Model saving & API | Not started |
 
@@ -187,12 +190,35 @@ reason: it does not improve the ranking, it places the default 0.50 threshold ne
 optimum so the shipped artifact behaves sensibly out of the box.
 
 **Class imbalance and the two benchmarks.** At 26.54% churn, a model predicting "No" for
-every customer scores 73.46% accuracy while finding none of the churners. All results are
-therefore judged against that baseline rather than against zero, and recall on the churn
-class is treated as the primary metric. Section 2 adds a second, harder benchmark: a crude
-four-condition rule (month-to-month, fibre, no OnlineSecurity, no TechSupport) already
-reaches 49.1% recall at 60.4% precision on the training set while touching 21.6% of
-customers, so a trained model has to beat that to be worth deploying.
+every customer scores 73.46% accuracy while finding none of the churners. Both benchmarks
+were pre-registered before any model existed, and section 5 reports the outcome of each.
+
+*Benchmark 1 — the majority-class floor — is cleared, and clearing it shows how little
+accuracy is worth here.* On test the model scores 73.88% accuracy against the baseline's
+73.45%: an improvement of 0.43 of a percentage point, while finding 438 churners against
+zero. Anyone comparing the two on accuracy alone would call them equivalent.
+
+*Benchmark 2 is not cleared as originally worded.* Section 2.9's four-condition rule
+(month-to-month, fibre, no OnlineSecurity, no TechSupport) was set as a bar the model "has
+to beat". At matched 21.8% coverage on test, the rule reaches 50.5% recall at 61.4%
+precision and the model reaches 49.6% at 60.3% — about a point behind on both, reversing
+the training-set result. The two select nearly the same people (the model flags 443 of the
+rule's 461), the gap is roughly five customers, and 14 of the 461 are chosen by
+tie-breaking because a 71-leaf tree produces only 64 distinct probabilities. The honest
+reading is that the model *matches* a hand-built rule in the rule's narrow operating
+region and earns its place by extending to regions the rule cannot reach at all — 41%
+coverage for 78.1% recall. Four conditions read off a cross-tab are competitive with a
+tuned decision tree, which is worth knowing.
+
+**Precision or recall?** Recall, subject to a precision floor. On the test set a missed
+churner costs real revenue — the 123 the model misses bill $8,172 a month, $98,065 a year,
+leaving with no chance of intervention — while a false positive costs one retention
+contact to somebody who was staying. Those are not symmetric. But precision cannot
+collapse: contact cost scales with volume, discounts to customers who would have stayed
+are pure margin loss, and over-contacting is itself a churn risk. Hence the 0.50 precision
+floor applied during model selection. The exact optimum depends on retention cost and
+customer value, neither of which is in this dataset, so section 5 reports a break-even
+contact cost instead of inventing an ROI.
 
 ---
 
