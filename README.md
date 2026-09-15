@@ -19,7 +19,7 @@ them before they go.
 | Section | Status |
 |---|---|
 | 1. Data understanding & preparation | ✅ Complete |
-| 2. Exploratory data analysis | Not started |
+| 2. Exploratory data analysis | ✅ Complete |
 | 3. Feature engineering | Not started |
 | 4. Model development | Not started |
 | 5. Model evaluation | Not started |
@@ -140,6 +140,15 @@ touched only by `transform` and by shape reporting. Section 4 calls the same fac
 fresh transformer inside a `Pipeline`, because `Pipeline` fits its steps in place rather
 than cloning them.
 
+**EDA reads the training split only.** Section 2 builds its own
+`train_df = X_train.join(y_train)` and never touches the test set. Nothing in that section calls
+`.fit`, so it cannot leak mechanically — but exploration is not passive. Every figure there exists to
+justify a section 3 feature decision, so exploring all 7,043 rows would let the test set shape the
+model through the analyst rather than through a fitted attribute, and the held-out 30% would stop
+being an honest estimate. Section 2 also ends by re-verifying a snapshot of the section 1 values it
+inherited, so an accidental variable rebind fails the notebook instead of quietly changing what an
+earlier cell appears to say.
+
 **Reuse on unseen data.** The preprocessor selects columns by name, uses
 `handle_unknown="ignore"` so an unseen category degrades to an all-zero block instead of
 raising, and carries a constant-`0.0` imputer so a never-billed customer is repaired inside
@@ -147,10 +156,13 @@ the pickled artifact rather than by a notebook cell. Section 1.13 demonstrates a
 on a single-row payload, including a `joblib` round-trip, so the API path is proven before
 `app.py` exists.
 
-**Class imbalance.** At 26.54% churn, a model predicting "No" for every customer scores
-73.46% accuracy while being useless. All results are therefore judged against that
-baseline rather than against zero, and recall on the churn class is treated as the primary
-metric — see the notebook's evaluation section for the reasoning.
+**Class imbalance and the two benchmarks.** At 26.54% churn, a model predicting "No" for
+every customer scores 73.46% accuracy while finding none of the churners. All results are
+therefore judged against that baseline rather than against zero, and recall on the churn
+class is treated as the primary metric. Section 2 adds a second, harder benchmark: a crude
+four-condition rule (month-to-month, fibre, no OnlineSecurity, no TechSupport) already
+reaches 49.1% recall at 60.4% precision on the training set while touching 21.6% of
+customers, so a trained model has to beat that to be worth deploying.
 
 ---
 
