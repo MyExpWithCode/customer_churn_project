@@ -9,7 +9,7 @@ them before they go.
 
 - **Dataset:** IBM Telco Customer Churn — 7,043 customers, 21 columns
 - **Target:** `Churn` (Yes / No), 26.54% positive class
-- **Model:** Decision Tree Classifier
+- **Model:** Decision Tree Classifier (`entropy`, `min_samples_leaf=50`, `class_weight="balanced"`)
 - **Split:** 70:30, `random_state=42`, stratified on the target
 
 ---
@@ -21,7 +21,7 @@ them before they go.
 | 1. Data understanding & preparation | ✅ Complete |
 | 2. Exploratory data analysis | ✅ Complete |
 | 3. Feature engineering | ✅ Complete |
-| 4. Model development | Not started |
+| 4. Model development | ✅ Complete |
 | 5. Model evaluation | Not started |
 | 6. Model interpretation | Not started |
 | 7. Model saving & API | Not started |
@@ -175,6 +175,16 @@ conjunctions itself given depth. The exception is `is_high_risk` at `max_depth=2
 +3.4 points of recall where the tree cannot afford to rebuild a four-way conjunction. The
 change that actually helps is a removal: dropping `gender`, `PhoneService` and
 `MultipleLines` improves recall, precision and F1 together.
+
+**Model selection used ROC-AUC, not recall.** Recall is the primary *reported* metric, but
+it cannot be the objective: flagging every customer scores recall 1.000. Tuning a
+threshold for F2 is barely better — it lands at 0.11 and flags over half the base.
+Section 4 therefore selects the configuration on ROC-AUC, which measures how well the
+model ranks customers by risk independent of the threshold, then sets the operating point
+separately, because that is a decision about how many customers the retention team can
+contact rather than a modelling choice. `class_weight="balanced"` is kept for the same
+reason: it does not improve the ranking, it places the default 0.50 threshold near the F1
+optimum so the shipped artifact behaves sensibly out of the box.
 
 **Class imbalance and the two benchmarks.** At 26.54% churn, a model predicting "No" for
 every customer scores 73.46% accuracy while finding none of the churners. All results are
