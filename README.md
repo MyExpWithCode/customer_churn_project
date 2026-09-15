@@ -26,7 +26,7 @@ them before they go.
 | 3. Feature engineering | ✅ Complete |
 | 4. Model development | ✅ Complete |
 | 5. Model evaluation | ✅ Complete |
-| 6. Model interpretation | Not started |
+| 6. Model interpretation | ✅ Complete |
 | 7. Model saving & API | Not started |
 
 ---
@@ -209,6 +209,22 @@ reading is that the model *matches* a hand-built rule in the rule's narrow opera
 region and earns its place by extending to regions the rule cannot reach at all — 41%
 coverage for 78.1% recall. Four conditions read off a cross-tab are competitive with a
 tuned decision tree, which is worth knowing.
+
+**What drives the predictions.** Four features do essentially all the work:
+`Contract`, `MonthlyCharges`, `tenure` and the engineered `is_high_risk` flag reach
+ROC-AUC 0.8309 in six encoded columns against the full 46-column model's 0.8319 — 99.7%
+of the lift over chance. `Contract` alone reaches 0.7401, so the model is substantially a
+contract-type classifier refined by price, tenure and unprotected fibre. Section 6 reports
+both Gini and permutation importance, the latter on train *and* test, which is what
+exposed `Dependents` and `Partner` as fit rather than signal: both carry small positive
+importance on training data and none on held-out data.
+
+**The highest-risk rules are directly actionable.** Every one of the tree's five riskiest
+leaves requires month-to-month *and* unprotected fibre *and* tenure under about ten
+months. Those five rules cover 7.8% of customers and 24.3% of all churners, the worst at a
+92.6% churn rate, and each is expressible as a database query rather than needing the
+model. Section 6.4 extracts them and verifies each reconstructed rule reproduces the
+tree's own leaf assignment exactly.
 
 **Precision or recall?** Recall, subject to a precision floor. On the test set a missed
 churner costs real revenue — the 123 the model misses bill $8,172 a month, $98,065 a year,
