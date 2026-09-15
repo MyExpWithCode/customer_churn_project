@@ -27,7 +27,7 @@ them before they go.
 | 4. Model development | ✅ Complete |
 | 5. Model evaluation | ✅ Complete |
 | 6. Model interpretation | ✅ Complete |
-| 7. Model saving & API | Not started |
+| 7. Model saving & API | ✅ Complete |
 
 ---
 
@@ -119,18 +119,48 @@ curl -X POST http://127.0.0.1:8000/predict \
   -d @sample_request.json
 ```
 
-**Response**
+**Response** — the actual reply to `sample_request.json`:
 
 ```json
 {
   "prediction": "Yes",
-  "churn_probability": 0.82
+  "churn_probability": 0.9326,
+  "threshold": 0.5,
+  "risk_band": "critical"
 }
 ```
 
-**Invalid input** returns HTTP 422 with a field-level description of what failed.
-Validation is handled by a Pydantic request model, so unknown categorical values, missing
-fields, and wrong types are all rejected before reaching the model.
+`prediction` and `churn_probability` are the two fields the brief specifies. `threshold`
+and `risk_band` are added so a caller can see *why* a probability became a label:
+`prediction` is `"Yes"` exactly when `churn_probability >= threshold`. The bands are
+`low` below the 26.5% training base rate, `moderate` up to the 0.50 threshold, `high` up
+to 0.80, and `critical` above it — every boundary a figure the notebook established.
+
+**Invalid input** returns HTTP 422 naming the offending field. Validation is a Pydantic
+request model with `Literal` types for the categoricals, numeric bounds, and
+`extra="forbid"`, so unknown categorical values, missing fields, wrong types and
+misspelled field names are each rejected before reaching the model — and the response says
+which:
+
+```json
+{"detail": [{"loc": ["body", "Contract"],
+             "msg": "Input should be 'Month-to-month', 'One year' or 'Two year'"}]}
+```
+
+At startup the service compares those declared values against the fitted encoder's own
+categories and refuses to start if they disagree, so a model retrained on data with a new
+payment method fails loudly instead of quietly rejecting valid customers.
+
+### Other endpoints
+
+`GET /health` reports whether the model loaded; `GET /docs` is FastAPI's generated
+interactive documentation.
+
+### What the service needs at runtime
+
+The 22 KB artifact and `churn_features.py`. **No training data** — the API never reads
+`data/`. `joblib` stores a reference to `churn_features.add_features` rather than its code,
+which is why that module sits at the project root rather than inside the notebook.
 
 ---
 
